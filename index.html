@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Todo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef3f6;
+        --surface: rgba(255, 255, 255, 0.84);
+        --panel: #ffffff;
+        --ink: #1c2430;
+        --muted: #677381;
+        --line: #d8e1e8;
+        --line-strong: #c4d0d9;
+        --accent: #0e7490;
+        --accent-dark: #155e75;
+        --accent-soft: #d9f1f6;
+        --active: #966100;
+        --active-bg: #fff0c2;
+        --done: #237653;
+        --done-bg: #dff5e9;
+        --todo: #596579;
+        --todo-bg: #e9eef5;
+        --danger: #b42318;
+        --danger-bg: #fde7e4;
+        --shadow: 0 20px 45px rgba(42, 57, 72, 0.12);
+        --shadow-soft: 0 8px 22px rgba(42, 57, 72, 0.08);
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background: linear-gradient(135deg, #f8fbfc 0%, var(--bg) 48%, #edf0f7 100%);
+        color: var(--ink);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .app {
+        width: min(920px, 100%);
+        margin: 0 auto;
+        padding: 34px 18px 44px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 38px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .count {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 0 13px;
+        border: 1px solid rgba(14, 116, 144, 0.18);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--accent-dark);
+        font-size: 13px;
+        font-weight: 800;
+        white-space: nowrap;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .count.is-pulsing {
+        animation: pulseCount 420ms ease;
+      }
+
+      .add-form {
+        display: grid;
+        grid-template-columns: 1fr 150px 96px;
+        gap: 12px;
+        padding: 12px;
+        background: var(--surface);
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      input,
+      select {
+        min-height: 48px;
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--ink);
+        padding: 0 13px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      input::placeholder {
+        color: #93a0ad;
+      }
+
+      input:focus,
+      select:focus,
+      button:focus-visible {
+        outline: 3px solid rgba(23, 107, 135, 0.22);
+        outline-offset: 2px;
+      }
+
+      button {
+        min-height: 40px;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 700;
+        transition:
+          transform 160ms ease,
+          background 160ms ease,
+          border-color 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        box-shadow: 0 12px 22px rgba(14, 116, 144, 0.22);
+      }
+
+      .primary:hover {
+        background: var(--accent-dark);
+        box-shadow: 0 14px 26px rgba(14, 116, 144, 0.25);
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 20px 0 12px;
+      }
+
+      .filters {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 2px 2px 4px;
+      }
+
+      .filter {
+        min-height: 38px;
+        padding: 0 14px;
+        border: 1px solid rgba(216, 225, 232, 0.9);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--muted);
+        white-space: nowrap;
+        box-shadow: 0 6px 14px rgba(42, 57, 72, 0.06);
+      }
+
+      .filter[aria-pressed="true"] {
+        border-color: rgba(14, 116, 144, 0.34);
+        background: var(--accent-soft);
+        color: var(--accent-dark);
+        animation: tapPop 220ms ease;
+      }
+
+      .list {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .task {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 12px;
+        align-items: center;
+        min-height: 72px;
+        padding: 13px 14px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        border-left: 5px solid var(--todo);
+        border-radius: 8px;
+        box-shadow: var(--shadow-soft);
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+        animation: taskIn 280ms ease both;
+      }
+
+      .task:hover {
+        border-color: var(--line-strong);
+        box-shadow: 0 14px 28px rgba(42, 57, 72, 0.11);
+        transform: translateY(-1px);
+      }
+
+      .task[data-state="着手中"] {
+        border-left-color: var(--active);
+      }
+
+      .task[data-state="完了"] {
+        border-left-color: var(--done);
+      }
+
+      .task.is-completing {
+        animation: completeFlash 520ms ease;
+      }
+
+      .task.is-removing {
+        animation: taskOut 220ms ease forwards;
+      }
+
+      .task-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+
+      .task[data-state="完了"] .task-name {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 70px;
+        min-height: 31px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--todo-bg);
+        color: var(--todo);
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid rgba(89, 101, 121, 0.12);
+      }
+
+      .task[data-state="着手中"] .badge {
+        background: var(--active-bg);
+        color: var(--active);
+      }
+
+      .task[data-state="完了"] .badge {
+        background: var(--done-bg);
+        color: var(--done);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .complete,
+      .delete {
+        width: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        padding: 0;
+        border: 1px solid var(--line);
+        background: #fff;
+        box-shadow: 0 5px 12px rgba(42, 57, 72, 0.06);
+      }
+
+      .complete {
+        color: var(--done);
+      }
+
+      .complete:hover {
+        background: var(--done-bg);
+      }
+
+      .delete {
+        color: var(--danger);
+      }
+
+      .delete:hover {
+        background: var(--danger-bg);
+      }
+
+      .complete:disabled {
+        cursor: default;
+        opacity: 0.46;
+        transform: none;
+      }
+
+      .summary {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.74);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .summary-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .summary h2 {
+        margin: 0;
+        color: var(--ink);
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+
+      .summary-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 30px;
+        min-width: 58px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--done-bg);
+        color: var(--done);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .completed-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .completed-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid rgba(35, 118, 83, 0.12);
+        border-radius: 6px;
+        background: rgba(223, 245, 233, 0.5);
+        color: #315b49;
+        font-size: 14px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+        animation: taskIn 220ms ease both;
+      }
+
+      .completed-item::before {
+        content: "✓";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        min-width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: var(--done);
+        color: #fff;
+        font-size: 12px;
+      }
+
+      .completed-empty {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .empty {
+        display: none;
+        padding: 34px 16px;
+        color: var(--muted);
+        text-align: center;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px dashed var(--line-strong);
+        border-radius: 8px;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .empty.is-visible {
+        display: block;
+      }
+
+      @keyframes taskIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes taskOut {
+        to {
+          opacity: 0;
+          transform: translateX(24px) scale(0.96);
+        }
+      }
+
+      @keyframes completeFlash {
+        0% {
+          background: rgba(255, 255, 255, 0.92);
+          transform: scale(1);
+        }
+
+        45% {
+          background: rgba(223, 245, 233, 0.96);
+          transform: scale(1.015);
+        }
+
+        100% {
+          background: rgba(255, 255, 255, 0.92);
+          transform: scale(1);
+        }
+      }
+
+      @keyframes tapPop {
+        50% {
+          transform: translateY(-1px) scale(1.04);
+        }
+      }
+
+      @keyframes pulseCount {
+        50% {
+          transform: scale(1.05);
+          box-shadow: 0 12px 26px rgba(14, 116, 144, 0.17);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          scroll-behavior: auto !important;
+          transition-duration: 1ms !important;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .app {
+          padding: 24px 14px 32px;
+        }
+
+        header,
+        .toolbar {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        h1 {
+          font-size: 34px;
+        }
+
+        .add-form {
+          grid-template-columns: 1fr;
+          padding: 12px;
+        }
+
+        .task {
+          grid-template-columns: 1fr auto;
+          align-items: start;
+          padding: 13px;
+        }
+
+        .badge {
+          grid-column: 1 / 2;
+          grid-row: 2;
+          justify-self: start;
+        }
+
+        .actions {
+          grid-column: 2;
+          grid-row: 1 / span 2;
+        }
+
+        .summary {
+          padding: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <h1>Todo</h1>
+        </div>
+        <div class="count" id="taskCount">0件</div>
+      </header>
+
+      <form class="add-form" id="addForm">
+        <input id="taskName" type="text" autocomplete="off" placeholder="タスク名" required />
+        <select id="taskState" aria-label="状態">
+          <option value="未着手">未着手</option>
+          <option value="着手中">着手中</option>
+          <option value="完了">完了</option>
+        </select>
+        <button class="primary" type="submit">追加</button>
+      </form>
+
+      <section class="toolbar" aria-label="表示切り替え">
+        <div class="filters" id="filters">
+          <button class="filter" type="button" data-filter="all" aria-pressed="true">すべて</button>
+          <button class="filter" type="button" data-filter="未着手" aria-pressed="false">未着手</button>
+          <button class="filter" type="button" data-filter="着手中" aria-pressed="false">着手中</button>
+          <button class="filter" type="button" data-filter="完了" aria-pressed="false">完了</button>
+        </div>
+      </section>
+
+      <ul class="list" id="taskList"></ul>
+      <p class="empty" id="emptyMessage">表示できるタスクがありません</p>
+
+      <section class="summary" aria-labelledby="completedTitle">
+        <div class="summary-head">
+          <h2 id="completedTitle">完了したタスク</h2>
+          <span class="summary-count" id="completedCount">0件</span>
+        </div>
+        <ul class="completed-list" id="completedList"></ul>
+        <p class="completed-empty" id="completedEmpty">まだ完了したタスクはありません</p>
+      </section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "personal-todo-tasks";
+      const stateLabels = ["未着手", "着手中", "完了"];
+
+      const elements = {
+        form: document.querySelector("#addForm"),
+        name: document.querySelector("#taskName"),
+        state: document.querySelector("#taskState"),
+        list: document.querySelector("#taskList"),
+        count: document.querySelector("#taskCount"),
+        empty: document.querySelector("#emptyMessage"),
+        filters: document.querySelector("#filters"),
+        completedCount: document.querySelector("#completedCount"),
+        completedList: document.querySelector("#completedList"),
+        completedEmpty: document.querySelector("#completedEmpty"),
+      };
+
+      let tasks = loadTasks();
+      let currentFilter = "all";
+      let previousStats = { total: tasks.length, completed: getCompletedTasks().length };
+
+      function loadTasks() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveTasks() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      }
+
+      function getCompletedTasks() {
+        return tasks.filter((task) => task.state === "完了");
+      }
+
+      function render() {
+        const visibleTasks =
+          currentFilter === "all"
+            ? tasks
+            : tasks.filter((task) => task.state === currentFilter);
+        const completedTasks = getCompletedTasks();
+
+        elements.list.innerHTML = "";
+        visibleTasks.forEach((task) => {
+          const item = document.createElement("li");
+          item.className = "task";
+          item.dataset.id = task.id;
+          item.dataset.state = task.state;
+
+          const name = document.createElement("div");
+          name.className = "task-name";
+          name.textContent = task.name;
+
+          const badge = document.createElement("span");
+          badge.className = "badge";
+          badge.textContent = task.state;
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+
+          const completeButton = document.createElement("button");
+          completeButton.className = "complete";
+          completeButton.type = "button";
+          completeButton.title = "完了に変更";
+          completeButton.setAttribute("aria-label", `${task.name}を完了に変更`);
+          completeButton.textContent = "✓";
+          completeButton.disabled = task.state === "完了";
+          completeButton.addEventListener("click", () => completeTask(task.id));
+
+          const deleteButton = document.createElement("button");
+          deleteButton.className = "delete";
+          deleteButton.type = "button";
+          deleteButton.title = "削除";
+          deleteButton.setAttribute("aria-label", `${task.name}を削除`);
+          deleteButton.textContent = "×";
+          deleteButton.addEventListener("click", () => deleteTask(task.id));
+
+          actions.append(completeButton, deleteButton);
+          item.append(name, badge, actions);
+          elements.list.append(item);
+        });
+
+        elements.empty.classList.toggle("is-visible", visibleTasks.length === 0);
+        elements.count.textContent = `${tasks.length}件 / 完了${completedTasks.length}件`;
+        elements.completedCount.textContent = `${completedTasks.length}件`;
+        elements.completedList.innerHTML = "";
+        completedTasks.forEach((task) => {
+          const item = document.createElement("li");
+          item.className = "completed-item";
+          item.textContent = task.name;
+          elements.completedList.append(item);
+        });
+        elements.completedEmpty.hidden = completedTasks.length > 0;
+
+        const statsChanged =
+          previousStats.total !== tasks.length || previousStats.completed !== completedTasks.length;
+        if (statsChanged) {
+          elements.count.classList.remove("is-pulsing");
+          void elements.count.offsetWidth;
+          elements.count.classList.add("is-pulsing");
+        }
+        previousStats = { total: tasks.length, completed: completedTasks.length };
+      }
+
+      function addTask(name, state) {
+        tasks.unshift({
+          id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+          name,
+          state,
+          createdAt: Date.now(),
+        });
+        saveTasks();
+        render();
+      }
+
+      function updateTaskState(id, state) {
+        tasks = tasks.map((task) => (task.id === id ? { ...task, state } : task));
+        saveTasks();
+        render();
+      }
+
+      function completeTask(id) {
+        const taskElement = elements.list.querySelector(`[data-id="${id}"]`);
+        if (!taskElement) {
+          updateTaskState(id, "完了");
+          return;
+        }
+
+        taskElement.classList.add("is-completing");
+        taskElement
+          .querySelector(".complete")
+          ?.setAttribute("disabled", "true");
+        taskElement.addEventListener("animationend", () => updateTaskState(id, "完了"), { once: true });
+      }
+
+      function deleteTask(id) {
+        const taskElement = elements.list.querySelector(`[data-id="${id}"]`);
+        if (!taskElement) {
+          removeTask(id);
+          return;
+        }
+
+        taskElement.classList.add("is-removing");
+        taskElement.addEventListener("animationend", () => removeTask(id), { once: true });
+      }
+
+      function removeTask(id) {
+        tasks = tasks.filter((task) => task.id !== id);
+        saveTasks();
+        render();
+      }
+
+      elements.form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const name = elements.name.value.trim();
+        const state = elements.state.value;
+
+        if (!name || !stateLabels.includes(state)) return;
+
+        addTask(name, state);
+        elements.name.value = "";
+        elements.state.value = "未着手";
+        elements.name.focus();
+      });
+
+      elements.filters.addEventListener("click", (event) => {
+        const button = event.target.closest(".filter");
+        if (!button) return;
+
+        currentFilter = button.dataset.filter;
+        document.querySelectorAll(".filter").forEach((filterButton) => {
+          filterButton.setAttribute("aria-pressed", String(filterButton === button));
+        });
+        render();
+      });
+
+      render();
+    </script>
+  </body>
+</html>
